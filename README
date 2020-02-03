@@ -1,1 +1,15 @@
 README
+This repo contains everything needed to build the project using arm-none-eabi-gcc.
+Simply plug in the board, run make, then either 'make burn' or 'make gdb' to write
+to the device, or debug respectively.
+
+Using gdb with the device (simple):
+
+Run st-util to start debugging server. 
+Run 'make gdb' to start gdb.
+
+	In GDB:
+	Run 'target extended-remote :4242'.
+	Run 'load' to load the code to the board.
+	Run continue to run.
+	Ctrl+c to interrupt (of course).
