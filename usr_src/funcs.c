@@ -24,7 +24,4 @@ void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on 
   GPIOA->ODR=0;
   GPIOA->ODR=(0b1<<(relay+relay_pin_OS));
   }
-  else{
-    printf("Relay Out of Range");
-  }
 }
