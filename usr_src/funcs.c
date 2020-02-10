@@ -1,11 +1,13 @@
 #include "funcs.h"
+#include "PB_LCD_Drivers.h"
 
 GPIO_InitTypeDef* Init_Relays(void){
   GPIO_InitTypeDef* GPIO_Struct=malloc(sizeof(GPIO_InitTypeDef));
 
   int relay_pins = (GPIO_Pin_5);
-  //Enable clock on gpio D
-  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+  //Enable clock on gpio A
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
+  
   // configure port A for driving LEDs
   GPIO_Struct->GPIO_Pin = relay_pins;
   GPIO_Struct->GPIO_Mode = GPIO_Mode_OUT;    // output
@@ -18,13 +20,13 @@ GPIO_InitTypeDef* Init_Relays(void){
 }
 
 void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on Port A
-  int relay_pin_OS=0; //P.D3
+  int relay_pin_OS=3; //Relays start at PE.3
   
   if (relay<=3){
-  GPIOA->ODR=0;
-  GPIOA->ODR=(0b1<<(relay+relay_pin_OS));
+  GPIOE->ODR=0;
+  GPIOE->ODR=(0b1<<(relay+relay_pin_OS));
   }
   else{
-    printf("Relay Out of Range");
+    //Currently do nothing
   }
 }
