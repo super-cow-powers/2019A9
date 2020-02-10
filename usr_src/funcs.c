@@ -29,4 +29,5 @@ void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on 
   else{
     //Currently do nothing
   }
+
 }
