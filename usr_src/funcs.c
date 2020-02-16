@@ -8,7 +8,7 @@ GPIO_InitTypeDef* Init_Relays(void){
   //Enable clock on gpio E
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
   
-  // configure port A for driving LEDs
+  // configure port E for driving Relays
   GPIO_Struct->GPIO_Pin = relay_pins;
   GPIO_Struct->GPIO_Mode = GPIO_Mode_OUT;    // output
   GPIO_Struct->GPIO_OType = GPIO_OType_PP; //push-pull mode
@@ -32,12 +32,39 @@ void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on 
 
 }
 
-int USART_Cust_Init(){
-  //TODO
-  return 0;
+void USART_Cust_Init(void){
+  unsigned int bit = 2;
+  unsigned long bitMask = ~(3UL << 2*bit);
+  
+  RCC->AHB1ENR |= RCC_APB1ENR_USART2EN; //Enable USART2 clock
+
+  USART2->BRR=(52<<4);
+  USART2->CR1=(1<<2)|(1<<3)|(1<<13);//Enable RX, TX, UART
+
+  // Set-up PA2 as an output, and configure PA2 to take input
+  // from USART2 (alternate function mode):
+  GPIOA->AFR[0] = (GPIOA->AFR[0] & 0xFFFFF0FF) | (0x7 << 8);
+  GPIOA->MODER = (GPIOA->MODER & bitMask) | (2UL << 2*bit);
+  
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN; //Enable GPIOA clock
 }
 
-int HSE_CLK_Init(){
+void SerialWrite_Char(char data){
+  while (!(USART2->SR & USART_SR_TXE));
+  USART2->DR = data;
+}
+
+void SerialWrite_String(char *str)
+{
+    // Send a string
+  while (*str) //do for all characters
+    {
+        SerialWrite_Char(*str++);
+    }
+}
+
+
+int HSE_CLK_Init(void){
   RCC->CR |= RCC_CR_HSEON;
   
   while (!(RCC->CR & RCC_CR_HSERDY)){}

@@ -16,7 +16,9 @@ int setup(void){
 
 int main(void){
   setup();
+  USART_Cust_Init();
   char buff[50];
+  SerialWrite_String("INIT DONE\n");
   
   PB_LCD_WriteString ("This Is Not A String",22);
   while (1){ //Main control loop
