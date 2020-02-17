@@ -51,7 +51,7 @@ clean:
 
 # flash
 burn:
-	sudo $(ST_FLASH) write $(PROJECT).bin 0x8000000
+	$(ST_FLASH) write $(PROJECT).bin 0x8000000
 
 # Debug
 gdb:

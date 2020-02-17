@@ -33,24 +33,36 @@ void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on 
 }
 
 void USART_Cust_Init(void){
-  unsigned int bit = 2;
-  unsigned long bitMask = ~(3UL << 2*bit);
-  
+  /* 
   RCC->AHB1ENR |= RCC_APB1ENR_USART2EN; //Enable USART2 clock
 
   USART2->BRR=(52<<4);
-  USART2->CR1=(1<<2)|(1<<3)|(1<<13);//Enable RX, TX, UART
-
-  // Set-up PA2 as an output, and configure PA2 to take input
-  // from USART2 (alternate function mode):
-  GPIOA->AFR[0] = (GPIOA->AFR[0] & 0xFFFFF0FF) | (0x7 << 8);
-  GPIOA->MODER = (GPIOA->MODER & bitMask) | (2UL << 2*bit);
   
+
+  // Set-up PA2 as an output, and configure PA3 to take input
+  // from USART2 (alternate function mode):
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN; //Enable GPIOA clock
+  GPIOA->AFR[0] |= ((0x7 << 2) | (0x7 << 3));
+  GPIOA->MODER |= ((0b10<<2)|(0b10<<3));
+  */
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;          /* Enable GPIOA clock */
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;    /* Enable USART2 clock */
+    
+    USART2->BRR=(13<<4);
+    USART2->BRR|=(0b0010);
+ 
+    /* Configure PA2, PA3 for USART2 TX, RX */
+    GPIOA->AFR[0] &= ~0xFF00;
+    GPIOA->AFR[0] |=  0x7700;   /* alt7 for USART2 */
+    GPIOA->MODER  &= ~0x00F0;
+    GPIOA->MODER  |=  0x00A0;   /* enable alt. function for PA2, PA3 */
+    
+
+    USART2->CR1|=USART_CR1_RE|USART_CR1_TE|USART_CR1_UE;//Enable RX, TX, UART
 }
 
 void SerialWrite_Char(char data){
-  while (!(USART2->SR & USART_SR_TXE));
+  while (!(USART2->SR & USART_SR_TXE)){};
   USART2->DR = data;
 }
 
