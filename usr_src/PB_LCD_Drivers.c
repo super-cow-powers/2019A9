@@ -62,7 +62,7 @@ void PB_LCD_Set_As_Input(int bit, GPIO_TypeDef* port, enum eTermType eTT) {
 // (The factors were determined experimentally for the STM32F discovery
 // board running at 16 MHz with no compiler optimisations.)
 void PB_LCD_Microdelay (unsigned int delayInMicroSeconds) {
-  float compensation = (float)SystemCoreClock / (float)16e6;
+  float compensation = (float)SystemCoreClock / (float)8e6;
   volatile unsigned long x = (unsigned long)(compensation * (36 * delayInMicroSeconds >> 4));
   while (x > 0){x--;}
 }

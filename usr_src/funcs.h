@@ -14,3 +14,5 @@ void USART_Cust_Init(void);
 void SerialWrite_Char(char data);
 
 void SerialWrite_String(char *str);
+
+void Initialise_IRQs(void);

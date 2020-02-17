@@ -86,3 +86,9 @@ int HSE_CLK_Init(void){
 
   return 0;
 }
+
+void Initialise_IRQs(void){
+  NVIC_EnableIRQ(ADC_IRQn); //Enable NVIC for ADCs
+  NVIC_SetPriority(ADC_IRQn, 0); //Set ADCs to max priority. May change to polling later!!!
+  SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 
+}

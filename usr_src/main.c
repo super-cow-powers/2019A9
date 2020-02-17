@@ -6,16 +6,14 @@ GPIO_InitTypeDef* Relay_GPIO_Struct;
 volatile uint32_t msTicks = 0;                          /* Variable to store millisecond ticks */
 
 int setup(void){
-  //Init External 8Mhz clock
   PB_LCD_Init();
   PB_LCD_WriteString ("Init Meter...",13);
-  HSE_CLK_Init();
+  HSE_CLK_Init();//Init External 8Mhz clock
   Relay_GPIO_Struct=Init_Relays();
   USART_Cust_Init();
+  Initialise_IRQs();
   
-  NVIC_EnableIRQ(ADC_IRQn);
-  NVIC_SetPriority(ADC_IRQn, 0);
-  SysTick_Config(SystemCoreClock / 1000);
+  
   
   return 0;
 }
@@ -31,8 +29,10 @@ int main(void){
   
   while (1){ //Main control loop
     //Switch_Relay(1, Relay_GPIO_Struct);
-    sprintf(buff,"mS: %ld\n\r",msTicks);
+    sprintf(buff,"mS: %ld : %ld\n\r",msTicks, SystemCoreClock);
     SerialWrite_String(buff);
+    PB_LCD_WriteString(buff,25);
+    PB_LCD_Clear();
   
     
   }
