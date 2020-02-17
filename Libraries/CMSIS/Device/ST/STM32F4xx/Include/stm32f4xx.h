@@ -53,6 +53,7 @@
 #ifndef __STM32F4xx_H
 #define __STM32F4xx_H
 
+
 #ifdef __cplusplus
  extern "C" {
 #endif /* __cplusplus */
@@ -141,7 +142,7 @@
 #if defined(STM32F40_41xxx) || defined(STM32F427_437xx)  || defined(STM32F429_439xx) || defined(STM32F401xx) || \
     defined(STM32F410xx) || defined(STM32F411xE) || defined(STM32F469_479xx)
  #if !defined  (HSE_VALUE) 
-  #define HSE_VALUE    ((uint32_t)25000000) /*!< Value of the External oscillator in Hz */
+  #define HSE_VALUE    ((uint32_t)8000000) /*!< Value of the External oscillator in Hz */
  #endif /* HSE_VALUE */
 #elif defined (STM32F412xG) || defined(STM32F413_423xx) || defined(STM32F446xx)
  #if !defined  (HSE_VALUE) 
