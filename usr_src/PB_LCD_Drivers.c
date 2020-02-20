@@ -28,6 +28,8 @@
 
 #include "PB_LCD_Drivers.h"
 #include "stm32f4xx.h"
+#include "funcs.h"
+
 
 ////////////////////////////////////////
 // Some general purpose helper routines:
@@ -58,13 +60,10 @@ void PB_LCD_Set_As_Input(int bit, GPIO_TypeDef* port, enum eTermType eTT) {
   port->PUPDR = (port->PUPDR & bitMask) | ((unsigned int)eTT << 2*bit);
 }
 
-// PB_LCD_Microdelay attempts to delay by the requested number of microseconds
-// (The factors were determined experimentally for the STM32F discovery
-// board running at 16 MHz with no compiler optimisations.)
+
 void PB_LCD_Microdelay (unsigned int delayInMicroSeconds) {
-  float compensation = (float)SystemCoreClock / (float)8e6;
-  volatile unsigned long x = (unsigned long)(compensation * (36 * delayInMicroSeconds >> 4));
-  while (x > 0){x--;}
+  uint32_t target=usTicks+delayInMicroSeconds; //Delay now uses the master sysTick uS counter for greater accuracy
+  while (usTicks<target);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,7 +75,7 @@ void PB_LCD_Microdelay (unsigned int delayInMicroSeconds) {
 // also less likely to be interrupted by a reset in the middle of an operation,
 // and this can upset it (I'm still not entirely clear why this happens, or
 // how to kick it out of whatever random state it gets into at these times).
-#define LCD_DELAY_CONST 50
+#define LCD_DELAY_CONST 25
 
 enum eLCD_OP { READ_INSTRUCTION, WRITE_INSTRUCTION, READ_DATA, WRITE_DATA };
 
@@ -205,8 +204,13 @@ void PB_LCD_WriteChar (char ch) {
   while (PB_LCD_IsBusy());
   PB_LCD_Write(WRITE_DATA, ch);
 }
-void PB_LCD_WriteString (char *s, int maxLength) {
-  while(*s && maxLength-- > 0) {
+void PB_LCD_WriteString (char *s) {
+  /*
+    while(*s && maxLength-- > 0) {
+    while (PB_LCD_IsBusy()){}
+    PB_LCD_Write(WRITE_DATA, *s++);
+    }*/
+  while(*s) {
     while (PB_LCD_IsBusy()){}
     PB_LCD_Write(WRITE_DATA, *s++);
   }

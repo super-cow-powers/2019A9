@@ -36,6 +36,6 @@ extern void PB_LCD_Init (void);
 extern void PB_LCD_Clear (void);
 extern void PB_LCD_GoToXY (int x, int y);
 extern void PB_LCD_WriteChar (char ch);
-extern void PB_LCD_WriteString (char *ch, int maxLength);
+extern void PB_LCD_WriteString (char *ch);
 
 #endif

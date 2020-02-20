@@ -3,17 +3,19 @@
 //Global variable defs go here please
 GPIO_InitTypeDef* Relay_GPIO_Struct;
 
-volatile uint32_t msTicks = 0;                          /* Variable to store millisecond ticks */
+volatile uint32_t ADC_result = 0, usTicks = 0;                        /* Variable to store millisecond ticks */
 
 int setup(void){
-  PB_LCD_Init();
-  PB_LCD_WriteString ("Init Meter...",13);
-  HSE_CLK_Init();//Init External 8Mhz clock
-  Relay_GPIO_Struct=Init_Relays();
-  USART_Cust_Init();
-  Initialise_IRQs();
+  SystemInit();//Initialise System
+  HSE_CLK_Init();//init external clock
   
+  USART_Cust_Init(); //init UART
+  Relay_GPIO_Struct=Init_Relays(); //Init relay pins
+  Initialise_ADCs();
+
+  Initialise_IRQs(); //setup IRQs
   
+  PB_LCD_Init(); //Init Screen
   
   return 0;
 }
@@ -21,24 +23,39 @@ int setup(void){
 int main(void){
   setup();
   PB_LCD_Clear();
-  PB_LCD_WriteString ("Init Done",9);
+  
   char buff[50];
-  //sprintf(buff,"Clock CFG: %ld %ld\n\r",(RCC->CFGR & (RCC_CFGR_SW_1)),(RCC->CFGR & (RCC_CFGR_SW_0)));
-  //SerialWrite_String(buff);
+  int sTicks=0;
 
   
   while (1){ //Main control loop
     //Switch_Relay(1, Relay_GPIO_Struct);
-    sprintf(buff,"mS: %ld : %ld\n\r",msTicks, SystemCoreClock);
-    SerialWrite_String(buff);
-    PB_LCD_WriteString(buff,25);
-    PB_LCD_Clear();
-  
+    int size;
+    size=sizeof(buff);
+    if ((usTicks==100000)){//increment seconds, and reset useconds each second.
+      
+      sprintf(buff,"S: %d | %d",sTicks,size);
+      sTicks++;
+      redraw_display(buff);
+      SerialWrite_String(buff);
+      SerialWrite_String("\n\r");
+      usTicks=0;
+      
+    } else if (usTicks==50000){ //Update display twice per second
+      sprintf(buff,"S: %d | %d",sTicks,size);
+      redraw_display(buff);
+    }  
     
   }
 }
 
 
 void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
-  msTicks++;                                                /* See startup file startup_LPC17xx.s for SysTick vector */ 
+  usTicks++;                                                /* See startup file startup_DEVICE.s for SysTick vector */ 
+}
+
+void ADC_IRQHandler (void) {
+  //SerialWrite_String("ADC\n\r");
+  ADC_result = ADC1->DR;
+  ADC1->CR2 |= ((0b1<<30));//Start new conversion
 }

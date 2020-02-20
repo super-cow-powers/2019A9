@@ -1,6 +1,7 @@
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
 
+
 GPIO_InitTypeDef* Init_Relays(void){
   GPIO_InitTypeDef* GPIO_Struct=malloc(sizeof(GPIO_InitTypeDef));
 
@@ -33,23 +34,12 @@ void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on 
 }
 
 void USART_Cust_Init(void){
-  /* 
-  RCC->AHB1ENR |= RCC_APB1ENR_USART2EN; //Enable USART2 clock
 
-  USART2->BRR=(52<<4);
-  
-
-  // Set-up PA2 as an output, and configure PA3 to take input
-  // from USART2 (alternate function mode):
-  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN; //Enable GPIOA clock
-  GPIOA->AFR[0] |= ((0x7 << 2) | (0x7 << 3));
-  GPIOA->MODER |= ((0b10<<2)|(0b10<<3));
-  */
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;          /* Enable GPIOA clock */
     RCC->APB1ENR |= RCC_APB1ENR_USART2EN;    /* Enable USART2 clock */
     
-    USART2->BRR=(13<<4);
-    USART2->BRR|=(0b0010);
+    USART2->BRR=52<<2; //CHECK THIS. POSSIBLE CLOCK ISSUES
+    //USART2->BRR|=(0b0010);
  
     /* Configure PA2, PA3 for USART2 TX, RX */
     GPIOA->AFR[0] &= ~0xFF00;
@@ -84,11 +74,42 @@ int HSE_CLK_Init(void){
   RCC->CFGR &= ~(RCC_CFGR_SW_0 | RCC_CFGR_SW_1);
   RCC->CFGR |= RCC_CFGR_SW_HSE;
 
+  SystemCoreClockUpdate(); //Update core clock value
+
   return 0;
 }
 
 void Initialise_IRQs(void){
   NVIC_EnableIRQ(ADC_IRQn); //Enable NVIC for ADCs
   NVIC_SetPriority(ADC_IRQn, 0); //Set ADCs to max priority. May change to polling later!!!
-  SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 
+  //NVIC_SetPriority(SysTick_IRQn, -1);
+  
+  SysTick_Config(SystemCoreClock / 100000); //Set SysTick to 1ms
+}
+
+void Initialise_ADCs(void){
+  RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //Enable clock to ADC1
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;//Clock to gpio C (use pin PC.4/ADC12_IN14)
+  GPIOC->MODER |= (GPIO_Mode_AN<<8);
+
+  ADC1->CR1 &= ~0xFFFFFFFF;
+  ADC1->CR1 |= ((1<<11)|(1<<5));
+
+  ADC1->CR2 &= ~0xFFFFFFFF;
+  ADC1->CR1 |= ((1<<10)|(1<<5));
+
+  ADC1->SQR1 &= ~0xF00000; //L = 0000
+  ADC1->SQR3 = 14; //Channel 14
+
+  ADC1->CR2 |= ((0b1)); //Enable ADC1
+  ADC1->CR2 |= ((0b1<<30)); //take one conversion
+}
+
+void redraw_display(char* buffer){
+  PB_LCD_WriteString("                ");
+  PB_LCD_GoToXY(0,0);
+  PB_LCD_WriteString(buffer);
+  PB_LCD_GoToXY(0,1);
+  PB_LCD_WriteString("TEST MODE");
+  PB_LCD_GoToXY(0,0);
 }

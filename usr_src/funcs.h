@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+extern volatile uint32_t usTicks; //micro second tick
+
 void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct);
 
 GPIO_InitTypeDef* Init_Relays(void);
@@ -16,3 +18,7 @@ void SerialWrite_Char(char data);
 void SerialWrite_String(char *str);
 
 void Initialise_IRQs(void);
+
+void Initialise_ADCs(void);
+
+void redraw_display(char* buffer);
