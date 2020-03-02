@@ -10,6 +10,9 @@ SOURCES = $(wildcard usr_src/*.c)
 SOURCES += ./Libraries/CMSIS/Device/ST/$(DEV_CAPS)/Source/Templates/system_$(DEV).c
 SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_rcc.c
 SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_gpio.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_exti.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_syscfg.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/misc.c
 SOURCES += ./Libraries/CMSIS/Device/ST/$(DEV_CAPS)/Source/Templates/TrueSTUDIO/startup_stm32f40xx.s
 
 # name for output binary files
