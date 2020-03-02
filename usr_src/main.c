@@ -3,19 +3,20 @@
 //Global variable defs go here please
 GPIO_InitTypeDef* Relay_GPIO_Struct;
 
-volatile uint32_t ADC_result = 0, usTicks = 0;                        /* Variable to store millisecond ticks */
+volatile uint32_t ADC_result = 0, msTicks = 0;                        /* Variable to store millisecond ticks */
+volatile int pressed_button=0;
 
 int setup(void){
   SystemInit();//Initialise System
   HSE_CLK_Init();//init external clock
   
   USART_Cust_Init(); //init UART
-  Relay_GPIO_Struct=Init_Relays(); //Init relay pins
+  Init_Relays(); //Init relay pins
   Initialise_ADCs();
-
+  PB_LCD_Init(); //Init Screen
   Initialise_IRQs(); //setup IRQs
   
-  PB_LCD_Init(); //Init Screen
+  Init_Buttons();
   
   return 0;
 }
@@ -26,32 +27,31 @@ int main(void){
   
   char buff[50];
   int sTicks=0;
-
   
+  unsigned int zero_point=init_vm();
+
+  //toggle_ADCs(1);
+  redraw_display(buff);
+  //Switch_Relay(3);
   while (1){ //Main control loop
     //Switch_Relay(1, Relay_GPIO_Struct);
-    int size;
-    size=sizeof(buff);
-    if ((usTicks==100000)){//increment seconds, and reset useconds each second.
+    
+    if (!(msTicks % 500)){
       
-      sprintf(buff,"S: %d | %d",sTicks,size);
       sTicks++;
-      redraw_display(buff);
+      sprintf(buff,"ADC:%d, %d",(int)(ADC_result),pressed_button);
       SerialWrite_String(buff);
       SerialWrite_String("\n\r");
-      usTicks=0;
-      
-    } else if (usTicks==50000){ //Update display twice per second
-      sprintf(buff,"S: %d | %d",sTicks,size);
-      redraw_display(buff);
-    }  
+        
+      redraw_display(buff);      
+    } 
     
   }
 }
 
 
 void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
-  usTicks++;                                                /* See startup file startup_DEVICE.s for SysTick vector */ 
+  msTicks++;                                                /* See startup file startup_DEVICE.s for SysTick vector */ 
 }
 
 void ADC_IRQHandler (void) {
@@ -59,3 +59,58 @@ void ADC_IRQHandler (void) {
   ADC_result = ADC1->DR;
   ADC1->CR2 |= ((0b1<<30));//Start new conversion
 }
+
+void EXTI9_5_IRQHandler (void) {
+  switch (EXTI->PR){
+  case (1<<8):
+    pressed_button=1;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0100);
+    break;
+  case (1<<9):
+    pressed_button=2;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0200);
+    break;
+  }
+  EXTI->PR = (0xFFFF);//Clear irq
+}
+
+void EXTI15_10_IRQHandler(void) {
+  /* Make sure that interrupt flag is set */
+  switch (EXTI->PR){
+  case (1<<10):
+    pressed_button=3;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0400);
+    break;
+  case (1<<11):
+    pressed_button=4;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0800);
+    break;
+  case (1<<12):
+    pressed_button=5;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x1000);
+    break;
+  case (1<<13):
+    pressed_button=6;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x2000);
+    break;
+  case (1<<14):
+    pressed_button=7;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x4000);
+    break;
+  case (1<<15):
+    pressed_button=8;
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x8000);
+    break;
+  }
+  
+  EXTI->PR = (0xFFFF);//Clear irq
+}
+

@@ -62,8 +62,9 @@ void PB_LCD_Set_As_Input(int bit, GPIO_TypeDef* port, enum eTermType eTT) {
 
 
 void PB_LCD_Microdelay (unsigned int delayInMicroSeconds) {
-  uint32_t target=usTicks+delayInMicroSeconds; //Delay now uses the master sysTick uS counter for greater accuracy
-  while (usTicks<target);
+    float compensation = (float)SystemCoreClock / (float)8e6;
+  volatile unsigned long x = (unsigned long)(compensation * (36 * delayInMicroSeconds >> 4));
+  while (x > 0){x--;}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -75,7 +76,7 @@ void PB_LCD_Microdelay (unsigned int delayInMicroSeconds) {
 // also less likely to be interrupted by a reset in the middle of an operation,
 // and this can upset it (I'm still not entirely clear why this happens, or
 // how to kick it out of whatever random state it gets into at these times).
-#define LCD_DELAY_CONST 25
+#define LCD_DELAY_CONST 10
 
 enum eLCD_OP { READ_INSTRUCTION, WRITE_INSTRUCTION, READ_DATA, WRITE_DATA };
 

@@ -1,34 +1,67 @@
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
 
+void Init_Buttons(void){
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
+  //Buttons are on PORT:E.(8-15)
+  
+  GPIO_InitTypeDef GPIO_Struct;
+  GPIO_InitTypeDef LED_Struct;
 
-GPIO_InitTypeDef* Init_Relays(void){
-  GPIO_InitTypeDef* GPIO_Struct=malloc(sizeof(GPIO_InitTypeDef));
+  
+  int button_pins = (GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15); //pin 8-15
+  
+  
+  GPIO_Struct.GPIO_Pin = button_pins;
+  GPIO_Struct.GPIO_Mode = GPIO_Mode_IN;    // output
+  GPIO_Struct.GPIO_PuPd = GPIO_PuPd_NOPULL; //Pull up
+  GPIO_Init(GPIOE, &GPIO_Struct);             // initialize port
 
-  int relay_pins = (GPIO_Pin_5); //Set to required pins with |
+  LED_Struct.GPIO_Pin = button_pins;
+  LED_Struct.GPIO_Mode = GPIO_Mode_OUT;    // output
+  LED_Struct.GPIO_OType = GPIO_OType_PP; //push-pull mode
+  LED_Struct.GPIO_Speed = 0x03;   // high speed
+  LED_Struct.GPIO_PuPd = GPIO_PuPd_DOWN; //Pull Down
+  GPIO_Init(GPIOD, &LED_Struct) ;             // initialize port
+  
+  SYSCFG->EXTICR[2] &= ~0x4444; //enable the correct lines to Port E
+  SYSCFG->EXTICR[2] = 0x4444;
+  SYSCFG->EXTICR[3] &= ~0x4444;
+  SYSCFG->EXTICR[3] = 0x4444;
+
+  EXTI->IMR |= (0XFF<<8); //enable interrupt on line
+  EXTI->FTSR &= ~(0XFF<<8); //Disable falling edge
+  EXTI->RTSR |= (0XFF<<8); //Enable rising edge
+
+}
+
+void Init_Relays(void){
+  GPIO_InitTypeDef GPIO_Struct;
+
+  int relay_pins = (GPIO_Pin_5|GPIO_Pin_4|GPIO_Pin_2|GPIO_Pin_3); //GPIO pins for relays
   //Enable clock on gpio E
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
   
   // configure port E for driving Relays
-  GPIO_Struct->GPIO_Pin = relay_pins;
-  GPIO_Struct->GPIO_Mode = GPIO_Mode_OUT;    // output
-  GPIO_Struct->GPIO_OType = GPIO_OType_PP; //push-pull mode
-  GPIO_Struct->GPIO_Speed = 0x03;   // high speed
-  GPIO_Struct->GPIO_PuPd = GPIO_PuPd_DOWN; //Pull Down
-  GPIO_Init(GPIOE, GPIO_Struct) ;             // initialize port
+  GPIO_Struct.GPIO_Pin = relay_pins;
+  GPIO_Struct.GPIO_Mode = GPIO_Mode_OUT;    // output
+  GPIO_Struct.GPIO_OType = GPIO_OType_PP; //push-pull mode
+  GPIO_Struct.GPIO_Speed = 0x03;   // high speed
+  GPIO_Struct.GPIO_PuPd = GPIO_PuPd_DOWN; //Pull Down
+  GPIO_Init(GPIOE, &GPIO_Struct) ;             // initialize port
 
-  return GPIO_Struct;
 }
 
-void Switch_Relay(int relay, GPIO_InitTypeDef* GPIO_Struct){ //Switch relays on Port A
-  int relay_pin_OS=3; //Relays start at PE.3
+void Switch_Relay(int relay){ //Switch relays on Port A
+  int relay_pin_OS=2; //Relays start at PE.2
   
   if (relay<=3){
   GPIOE->ODR=0;
   GPIOE->ODR=(0b1<<(relay+relay_pin_OS));
   }
   else{
-    //Currently do nothing
+    SerialWrite_String("BAD RELAY NUMBER\n");
   }
 
 }
@@ -67,6 +100,7 @@ void SerialWrite_String(char *str)
 
 
 int HSE_CLK_Init(void){
+  
   RCC->CR |= RCC_CR_HSEON;
   
   while (!(RCC->CR & RCC_CR_HSERDY)){}
@@ -81,10 +115,14 @@ int HSE_CLK_Init(void){
 
 void Initialise_IRQs(void){
   NVIC_EnableIRQ(ADC_IRQn); //Enable NVIC for ADCs
-  NVIC_SetPriority(ADC_IRQn, 0); //Set ADCs to max priority. May change to polling later!!!
-  //NVIC_SetPriority(SysTick_IRQn, -1);
+  NVIC_EnableIRQ(EXTI9_5_IRQn);
+  NVIC_EnableIRQ(EXTI15_10_IRQn);
   
-  SysTick_Config(SystemCoreClock / 100000); //Set SysTick to 1ms
+  NVIC_SetPriority(EXTI9_5_IRQn,1);//lower priority than ADCs
+  NVIC_SetPriority(EXTI15_10_IRQn,1);//lower priority than ADCs
+  
+  NVIC_SetPriority(ADC_IRQn, 0); //Set ADC priority.
+  SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 1ms
 }
 
 void Initialise_ADCs(void){
@@ -102,7 +140,15 @@ void Initialise_ADCs(void){
   ADC1->SQR3 = 14; //Channel 14
 
   ADC1->CR2 |= ((0b1)); //Enable ADC1
-  ADC1->CR2 |= ((0b1<<30)); //take one conversion
+  ADC1->CR2 |= (0b1<<30);
+}
+
+void toggle_ADCs(int state){
+  if (state==1){
+    ADC1->CR2 |= (0b1<<30); //toggle conversion
+  }else if (state==0){
+    ADC1->CR2 &= ~(0b1<<30);
+  }else{SerialWrite_String("BAD STATE");}
 }
 
 void redraw_display(char* buffer){
@@ -112,4 +158,17 @@ void redraw_display(char* buffer){
   PB_LCD_GoToXY(0,1);
   PB_LCD_WriteString("TEST MODE");
   PB_LCD_GoToXY(0,0);
+}
+
+unsigned int init_vm(void){
+  uint32_t target_ms = msTicks + 1000;
+  int i=0;//number of samples
+  uint32_t sum=0;
+  //toggle_ADCs(1);
+  while (msTicks <= target_ms){
+    sum += ADC_result;
+    i++;
+  }
+  //toggle_ADCs(0);
+  return (sum/i);
 }
