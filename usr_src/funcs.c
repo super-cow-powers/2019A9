@@ -118,8 +118,8 @@ void Initialise_IRQs(void){
   NVIC_EnableIRQ(EXTI9_5_IRQn);
   NVIC_EnableIRQ(EXTI15_10_IRQn);
   
-  NVIC_SetPriority(EXTI9_5_IRQn,1);//lower priority than ADCs
-  NVIC_SetPriority(EXTI15_10_IRQn,1);//lower priority than ADCs
+  NVIC_SetPriority(EXTI9_5_IRQn,-1);//higher priority than ADCs
+  NVIC_SetPriority(EXTI15_10_IRQn,-1);//higher priority than ADCs
   
   NVIC_SetPriority(ADC_IRQn, 0); //Set ADC priority.
   SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 1ms
@@ -164,11 +164,47 @@ unsigned int init_vm(void){
   uint32_t target_ms = msTicks + 1000;
   int i=0;//number of samples
   uint32_t sum=0;
-  //toggle_ADCs(1);
+  toggle_ADCs(1);
   while (msTicks <= target_ms){
     sum += ADC_result;
     i++;
   }
-  //toggle_ADCs(0);
+  toggle_ADCs(0);
   return (sum/i);
 }
+
+int modeSwitch(enum Modes* CurrentMode,enum Ranges* CurrentRange, int pressed_button){
+  int buffer=*CurrentRange;
+  switch (pressed_button){
+  case (0):
+    break;
+  case (1):
+    *CurrentMode=DC_V;
+    pressed_button=0;
+    break;
+  case (2):
+    *CurrentMode=AC_V;
+    pressed_button=0;
+    break;
+  case (3):
+    *CurrentMode=DC_I;
+    pressed_button=0;
+    break;
+  case (4):
+    *CurrentMode=AC_I;
+    pressed_button=0;
+    break;
+  case (5):
+    *CurrentMode=FRQ;
+    pressed_button=0;
+    break;
+  case (6):
+    buffer=*CurrentRange;
+    buffer++;
+    if (buffer>3){buffer=0;}
+    *CurrentRange=buffer;
+    pressed_button=0;
+  }
+  return 0;
+}
+

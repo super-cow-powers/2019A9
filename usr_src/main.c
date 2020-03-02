@@ -27,27 +27,36 @@ int main(void){
   
   char buff[50];
   int sTicks=0;
+  enum Modes CurrentMode=DC_V;
+  enum Ranges CurrentRange=one;
   
   unsigned int zero_point=init_vm();
 
-  //toggle_ADCs(1);
+  toggle_ADCs(1);
   redraw_display(buff);
-  //Switch_Relay(3);
+  Switch_Relay(3);
   while (1){ //Main control loop
-    //Switch_Relay(1, Relay_GPIO_Struct);
     
-    if (!(msTicks % 500)){
+    if (!(msTicks % 200)){
       
       sTicks++;
-      sprintf(buff,"ADC:%d, %d",(int)(ADC_result),pressed_button);
+      sprintf(buff,"ADC:%d, %d, %d",(int)(ADC_result),CurrentMode,CurrentRange);
       SerialWrite_String(buff);
       SerialWrite_String("\n\r");
         
       redraw_display(buff);      
     } 
     
+    pressed_button=modeSwitch(&CurrentMode,&CurrentRange,pressed_button);
+    
   }
 }
+
+
+
+
+
+//IRQ Stuff. BEGIN:
 
 
 void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
@@ -61,7 +70,7 @@ void ADC_IRQHandler (void) {
 }
 
 void EXTI9_5_IRQHandler (void) {
-  switch (EXTI->PR){
+  switch (EXTI->PR){ //Find which button has been pressed
   case (1<<8):
     pressed_button=1;
     GPIOD->ODR &= ~(0xFF00);
@@ -78,7 +87,7 @@ void EXTI9_5_IRQHandler (void) {
 
 void EXTI15_10_IRQHandler(void) {
   /* Make sure that interrupt flag is set */
-  switch (EXTI->PR){
+  switch (EXTI->PR){ //Find which button has been pressed
   case (1<<10):
     pressed_button=3;
     GPIOD->ODR &= ~(0xFF00);
