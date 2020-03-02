@@ -6,11 +6,13 @@ DEV ?= stm32f4xx
 
 
 # list of source files
-SOURCES = ./usr_src/main.c
-SOURCES += ./usr_src/funcs.c
+SOURCES = $(wildcard usr_src/*.c)
 SOURCES += ./Libraries/CMSIS/Device/ST/$(DEV_CAPS)/Source/Templates/system_$(DEV).c
 SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_rcc.c
 SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_gpio.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_exti.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/$(DEV)_syscfg.c
+SOURCES += ./Libraries/$(STD_PERIPH_DRIV)/src/misc.c
 SOURCES += ./Libraries/CMSIS/Device/ST/$(DEV_CAPS)/Source/Templates/TrueSTUDIO/startup_stm32f40xx.s
 
 # name for output binary files
@@ -52,7 +54,7 @@ clean:
 
 # flash
 burn:
-	sudo $(ST_FLASH) write $(PROJECT).bin 0x8000000
+	$(ST_FLASH) write $(PROJECT).bin 0x8000000
 
 # Debug
 gdb:
