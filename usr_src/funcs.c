@@ -39,7 +39,7 @@ void Init_Buttons(void){
 void Init_Relays(void){
   GPIO_InitTypeDef GPIO_Struct;
 
-  int relay_pins = (GPIO_Pin_5|GPIO_Pin_4|GPIO_Pin_2|GPIO_Pin_3); //GPIO pins for relays
+  int relay_pins = (GPIO_Pin_6|GPIO_Pin_5|GPIO_Pin_3|GPIO_Pin_4); //GPIO pins for relays
   //Enable clock on gpio E
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
   
@@ -48,17 +48,17 @@ void Init_Relays(void){
   GPIO_Struct.GPIO_Mode = GPIO_Mode_OUT;    // output
   GPIO_Struct.GPIO_OType = GPIO_OType_PP; //push-pull mode
   GPIO_Struct.GPIO_Speed = 0x03;   // high speed
-  GPIO_Struct.GPIO_PuPd = GPIO_PuPd_DOWN; //Pull Down
+  GPIO_Struct.GPIO_PuPd = GPIO_PuPd_UP; //Pull Down
   GPIO_Init(GPIOE, &GPIO_Struct) ;             // initialize port
 
 }
 
-void Switch_Relay(int relay){ //Switch relays on Port A
-  int relay_pin_OS=2; //Relays start at PE.2
+void Switch_Relay(int relay){ //Switch relays on Port A (only one on at once)
+  int relay_pin_OS=3; //Relays start at PE.3
   
   if (relay<=3){
-  GPIOE->ODR=0;
-  GPIOE->ODR=(0b1<<(relay+relay_pin_OS));
+    GPIOE->ODR &= ~(0xF<<3); //Clear relays
+    GPIOE->ODR |= (0b1<<(relay+relay_pin_OS));
   }
   else{
     SerialWrite_String("BAD RELAY NUMBER\n");
@@ -68,20 +68,20 @@ void Switch_Relay(int relay){ //Switch relays on Port A
 
 void USART_Cust_Init(void){
 
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;          /* Enable GPIOA clock */
-    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;    /* Enable USART2 clock */
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;          /* Enable GPIOA clock */
+  RCC->APB1ENR |= RCC_APB1ENR_USART2EN;    /* Enable USART2 clock */
     
-    USART2->BRR=52<<2; //CHECK THIS. POSSIBLE CLOCK ISSUES
-    //USART2->BRR|=(0b0010);
+  USART2->BRR=52<<2; //CHECK THIS. POSSIBLE CLOCK ISSUES
+  //USART2->BRR|=(0b0010);
  
-    /* Configure PA2, PA3 for USART2 TX, RX */
-    GPIOA->AFR[0] &= ~0xFF00;
-    GPIOA->AFR[0] |=  0x7700;   /* alt7 for USART2 */
-    GPIOA->MODER  &= ~0x00F0;
-    GPIOA->MODER  |=  0x00A0;   /* enable alt. function for PA2, PA3 */
+  /* Configure PA2, PA3 for USART2 TX, RX */
+  GPIOA->AFR[0] &= ~0xFF00;
+  GPIOA->AFR[0] |=  0x7700;   /* alt7 for USART2 */
+  GPIOA->MODER  &= ~0x00F0;
+  GPIOA->MODER  |=  0x00A0;   /* enable alt. function for PA2, PA3 */
     
 
-    USART2->CR1|=USART_CR1_RE|USART_CR1_TE|USART_CR1_UE;//Enable RX, TX, UART
+  USART2->CR1|=USART_CR1_RE|USART_CR1_TE|USART_CR1_UE;//Enable RX, TX, UART
 }
 
 void SerialWrite_Char(char data){
@@ -91,10 +91,10 @@ void SerialWrite_Char(char data){
 
 void SerialWrite_String(char *str)
 {
-    // Send a string
+  // Send a string
   while (*str) //do for all characters
     {
-        SerialWrite_Char(*str++);
+      SerialWrite_Char(*str++);
     }
 }
 
@@ -143,33 +143,62 @@ void Initialise_ADCs(void){
   ADC1->CR2 |= (0b1<<30);
 }
 
-void toggle_ADCs(int state){
-  if (state==1){
-    ADC1->CR2 |= (0b1<<30); //toggle conversion
-  }else if (state==0){
-    ADC1->CR2 &= ~(0b1<<30);
-  }else{SerialWrite_String("BAD STATE");}
-}
-
-void redraw_display(char* buffer){
+void redraw_display(char* buffer, enum Modes CurrentMode, enum Ranges CurrentRange){
   PB_LCD_WriteString("                ");
   PB_LCD_GoToXY(0,0);
   PB_LCD_WriteString(buffer);
   PB_LCD_GoToXY(0,1);
-  PB_LCD_WriteString("TEST MODE");
+  
+  switch (CurrentMode){
+  case (DC_V):
+    PB_LCD_WriteString("DC V");
+    break;
+  case (AC_V):
+    PB_LCD_WriteString("AC Vrms");
+    break;
+  case (DC_I):
+    PB_LCD_WriteString("DC I");
+    break;
+  case (AC_I):
+    PB_LCD_WriteString("AC Irms");
+    break;
+  case (FRQ):
+    PB_LCD_WriteString("Frq");
+    break;
+  case (RES):
+    PB_LCD_WriteString("Ohms");
+    break;
+  }
+  if ((CurrentMode != FRQ)&&(CurrentMode != RES)){
+  switch (CurrentRange){
+  case (tenm):
+    PB_LCD_WriteString(" (10 milli)                     ");
+    break;
+  case (hundredm):
+    PB_LCD_WriteString(" (100 milli)                    ");
+    break;
+  case (one):
+    PB_LCD_WriteString(" (1)                            ");
+    break;
+  case (ten):
+    PB_LCD_WriteString(" (10)                           ");
+    break;
+  }
+  } else {
+    PB_LCD_WriteString("              ");
+  }
+    
   PB_LCD_GoToXY(0,0);
 }
 
 unsigned int init_vm(void){
-  uint32_t target_ms = msTicks + 1000;
+  uint32_t target_ms = msTicks + 2000;
   int i=0;//number of samples
   uint32_t sum=0;
-  toggle_ADCs(1);
   while (msTicks <= target_ms){
     sum += ADC_result;
     i++;
   }
-  toggle_ADCs(0);
   return (sum/i);
 }
 
@@ -180,31 +209,57 @@ int modeSwitch(enum Modes* CurrentMode,enum Ranges* CurrentRange, int pressed_bu
     break;
   case (1):
     *CurrentMode=DC_V;
-    pressed_button=0;
+    //Switch_Relay(0);
+    
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0100);
     break;
   case (2):
     *CurrentMode=AC_V;
-    pressed_button=0;
+    
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0200);
     break;
   case (3):
     *CurrentMode=DC_I;
-    pressed_button=0;
+    
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0400);
     break;
   case (4):
     *CurrentMode=AC_I;
-    pressed_button=0;
+    
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x0800);
     break;
   case (5):
     *CurrentMode=FRQ;
-    pressed_button=0;
+    
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x1000);
     break;
   case (6):
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x2000);
+    break;
+  case (7):
     buffer=*CurrentRange;
     buffer++;
-    if (buffer>3){buffer=0;}
+
+    if (buffer>3){
+    buffer=0;}
+    
     *CurrentRange=buffer;
-    pressed_button=0;
+    Switch_Relay(*CurrentRange);
+    //GPIOD->ODR &= ~(0xFF00);
+    //GPIOD->ODR |= (0x4000);
+    break;
+  case (8):
+    GPIOD->ODR &= ~(0xFF00);
+    GPIOD->ODR |= (0x8000);
+    break;
   }
-  return 0;
-}
+
+    return 0;
+  }
 

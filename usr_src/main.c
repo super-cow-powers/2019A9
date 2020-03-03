@@ -29,26 +29,26 @@ int main(void){
   int sTicks=0;
   enum Modes CurrentMode=DC_V;
   enum Ranges CurrentRange=one;
+  modeSwitch(&CurrentMode,&CurrentRange,pressed_button); //
   
   unsigned int zero_point=init_vm();
 
-  toggle_ADCs(1);
-  redraw_display(buff);
-  Switch_Relay(3);
+  redraw_display(buff, CurrentMode, CurrentRange);
+
   while (1){ //Main control loop
     
     if (!(msTicks % 200)){
       
       sTicks++;
-      sprintf(buff,"ADC:%d, %d, %d",(int)(ADC_result),CurrentMode,CurrentRange);
+      sprintf(buff,"ADC:%d, %d, %d",(int)(ADC_result-zero_point),CurrentMode,CurrentRange);
       SerialWrite_String(buff);
       SerialWrite_String("\n\r");
         
-      redraw_display(buff);      
+      redraw_display(buff, CurrentMode, CurrentRange);      
     } 
-    
-    pressed_button=modeSwitch(&CurrentMode,&CurrentRange,pressed_button);
-    
+    if (!(msTicks % 10)){
+      pressed_button=modeSwitch(&CurrentMode,&CurrentRange,pressed_button);
+    }
   }
 }
 
@@ -73,13 +73,9 @@ void EXTI9_5_IRQHandler (void) {
   switch (EXTI->PR){ //Find which button has been pressed
   case (1<<8):
     pressed_button=1;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x0100);
     break;
   case (1<<9):
     pressed_button=2;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x0200);
     break;
   }
   EXTI->PR = (0xFFFF);//Clear irq
@@ -90,33 +86,21 @@ void EXTI15_10_IRQHandler(void) {
   switch (EXTI->PR){ //Find which button has been pressed
   case (1<<10):
     pressed_button=3;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x0400);
     break;
   case (1<<11):
     pressed_button=4;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x0800);
     break;
   case (1<<12):
     pressed_button=5;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x1000);
     break;
   case (1<<13):
     pressed_button=6;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x2000);
     break;
   case (1<<14):
     pressed_button=7;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x4000);
     break;
   case (1<<15):
     pressed_button=8;
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x8000);
     break;
   }
   

@@ -6,7 +6,7 @@
 
 extern volatile uint32_t msTicks; extern volatile uint32_t ADC_result; //micro second tick and ADC_Result
 
-enum Modes {DC_V,AC_V,DC_I,AC_I,FRQ};
+enum Modes {DC_V,AC_V,DC_I,AC_I,FRQ,RES};
 enum Ranges {tenm,hundredm,one,ten};
 
 void Init_Buttons(void);
@@ -29,7 +29,7 @@ void Initialise_ADCs(void);
 
 void toggle_ADCs(int state);
 
-void redraw_display(char* buffer);
+void redraw_display(char* buffer, enum Modes CurrentMode, enum Ranges CurrentRange);
 
 void delay_us(u32 nTime);
 
