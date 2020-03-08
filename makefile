@@ -26,9 +26,10 @@ OBJCOPY = arm-none-eabi-objcopy
 ST_FLASH ?= st-flash
 
 # specify compiler flags
-CFLAGS = -g -O2 -Wall
+CFLAGS += -L./ -larm_cortexM4lf_math
+CFLAGS += -g -O2 -Wall
 CFLAGS += -T"./Project/STM32F4xx_StdPeriph_Templates/TrueSTUDIO/STM32F40_41xxx/STM32F417IG_FLASH.ld"
-CFLAGS += -mlittle-endian -mthumb -specs=nano.specs -specs=nosys.specs -mcpu=cortex-m4 -mthumb-interwork -mfloat-abi=hard
+CFLAGS += -mlittle-endian -mthumb -specs=rdimon.specs -specs=nano.specs -specs=nosys.specs -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mthumb-interwork -mfloat-abi=hard -ffast-math -fno-math-errno
 CFLAGS += -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD
 CFLAGS += -Wl,--gc-sections
 CFLAGS += -I./usr_src
@@ -43,7 +44,7 @@ OBJS = $(SOURCES:.c=.o)
 all: $(PROJECT).elf
 
 # compile
-$(PROJECT).elf: $(SOURCES)
+$(PROJECT).elf: $(SOURCES) libarm_cortexM4lf_math.a
 	$(CC) $(CFLAGS) $^ -o $@
 	$(OBJCOPY) -O ihex $(PROJECT).elf $(PROJECT).hex
 	$(OBJCOPY) -O binary $(PROJECT).elf $(PROJECT).bin

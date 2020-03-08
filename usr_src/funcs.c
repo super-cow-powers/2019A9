@@ -1,6 +1,7 @@
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
 
+
 void Init_Buttons(void){
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
@@ -143,13 +144,13 @@ void Initialise_ADCs(void){
   ADC1->CR2 |= (0b1<<30);
 }
 
-void redraw_display(char* buffer, enum Modes CurrentMode, enum Ranges CurrentRange){
+void redraw_display(char* buffer, Mode CurrentMode){
   PB_LCD_WriteString("                ");
   PB_LCD_GoToXY(0,0);
   PB_LCD_WriteString(buffer);
   PB_LCD_GoToXY(0,1);
   
-  switch (CurrentMode){
+  switch (CurrentMode.MeasureMode){
   case (DC_V):
     PB_LCD_WriteString("DC V");
     break;
@@ -169,8 +170,8 @@ void redraw_display(char* buffer, enum Modes CurrentMode, enum Ranges CurrentRan
     PB_LCD_WriteString("Ohms");
     break;
   }
-  if ((CurrentMode != FRQ)&&(CurrentMode != RES)){
-  switch (CurrentRange){
+  if ((CurrentMode.MeasureMode != FRQ)&&(CurrentMode.MeasureMode != RES)){
+  switch (CurrentMode.CurrentRange){
   case (tenm):
     PB_LCD_WriteString(" (10 milli)                     ");
     break;
@@ -202,38 +203,38 @@ unsigned int init_vm(void){
   return (sum/i);
 }
 
-int modeSwitch(enum Modes* CurrentMode,enum Ranges* CurrentRange, int pressed_button){
-  int buffer=*CurrentRange;
+int modeSwitch(Mode* CurrentMode, int pressed_button){
+  int buffer=CurrentMode->CurrentRange;
   switch (pressed_button){
   case (0):
     break;
   case (1):
-    *CurrentMode=DC_V;
+    CurrentMode->MeasureMode=DC_V;
     //Switch_Relay(0);
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0100);
     break;
   case (2):
-    *CurrentMode=AC_V;
+    CurrentMode->MeasureMode=AC_V;
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0200);
     break;
   case (3):
-    *CurrentMode=DC_I;
+    CurrentMode->MeasureMode=DC_I;
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0400);
     break;
   case (4):
-    *CurrentMode=AC_I;
+    CurrentMode->MeasureMode=AC_I;
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0800);
     break;
   case (5):
-    *CurrentMode=FRQ;
+    CurrentMode->MeasureMode=FRQ;
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x1000);
@@ -243,14 +244,14 @@ int modeSwitch(enum Modes* CurrentMode,enum Ranges* CurrentRange, int pressed_bu
     GPIOD->ODR |= (0x2000);
     break;
   case (7):
-    buffer=*CurrentRange;
+    buffer=CurrentMode->CurrentRange;
     buffer++;
 
     if (buffer>3){
     buffer=0;}
     
-    *CurrentRange=buffer;
-    Switch_Relay(*CurrentRange);
+    CurrentMode->CurrentRange=buffer;
+    Switch_Relay(CurrentMode->CurrentRange);
     //GPIOD->ODR &= ~(0xFF00);
     //GPIOD->ODR |= (0x4000);
     break;
