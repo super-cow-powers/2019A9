@@ -19,15 +19,22 @@
 
 extern volatile uint32_t msTicks; extern volatile uint32_t ADC_result; //micro second tick and ADC_Result
 
-enum Modes {DC_V,AC_V,DC_I,AC_I,FRQ,RES};
-enum MeasureModes {MEAN,MAX,RMS};
-enum Ranges {tenm,hundredm,one,ten};
+typedef enum Modes {DC_V,AC_V,DC_I,AC_I,FRQ,RES} Modes;
+typedef enum MeasureTypes {MEAN,MAX,RMS} MeasureTypes;
+typedef enum Ranges {tenm,hundredm,one,ten} Ranges;
 
 typedef struct {
-  enum Modes MeasureMode;
-  enum MeasureModes MeasureType;
-  enum Ranges CurrentRange;
+  Modes MeasureMode;
+  MeasureTypes MeasureType;
+  Ranges CurrentRange;
 } Mode;
+
+
+typedef struct {
+  float32_t ADC_Vals[Max_ADC_Vals];
+  int current_value;
+} ADC_Buffer;
+
 
 void Init_Buttons(void);
 

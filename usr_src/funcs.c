@@ -123,6 +123,8 @@ void Initialise_IRQs(void){
   NVIC_SetPriority(EXTI15_10_IRQn,-1);//higher priority than ADCs
   
   NVIC_SetPriority(ADC_IRQn, 0); //Set ADC priority.
+
+  NVIC_EnableIRQ(USART2_IRQn);
   SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 1ms
 }
 
@@ -205,12 +207,14 @@ unsigned int init_vm(void){
 
 int modeSwitch(Mode* CurrentMode, int pressed_button){
   int buffer=CurrentMode->CurrentRange;
-  switch (pressed_button){
+  switch (pressed_button){ //Sets mode state according to button press
   case (0):
     break;
   case (1):
     CurrentMode->MeasureMode=DC_V;
-    //Switch_Relay(0);
+
+    if (CurrentMode->MeasureType != MAX){
+      CurrentMode->MeasureType=MEAN;}
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0100);
@@ -223,6 +227,9 @@ int modeSwitch(Mode* CurrentMode, int pressed_button){
     break;
   case (3):
     CurrentMode->MeasureMode=DC_I;
+    
+    if (CurrentMode->MeasureType != MAX){
+      CurrentMode->MeasureType=MEAN;}
     
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x0400);
@@ -240,6 +247,9 @@ int modeSwitch(Mode* CurrentMode, int pressed_button){
     GPIOD->ODR |= (0x1000);
     break;
   case (6):
+    CurrentMode->MeasureMode=RES;
+    CurrentMode->MeasureType=MEAN;
+
     GPIOD->ODR &= ~(0xFF00);
     GPIOD->ODR |= (0x2000);
     break;
@@ -256,8 +266,27 @@ int modeSwitch(Mode* CurrentMode, int pressed_button){
     //GPIOD->ODR |= (0x4000);
     break;
   case (8):
-    GPIOD->ODR &= ~(0xFF00);
-    GPIOD->ODR |= (0x8000);
+    if ((CurrentMode->MeasureMode == AC_V)|(CurrentMode->MeasureMode == AC_I)){
+      buffer=CurrentMode->MeasureType;
+      buffer++;
+
+      if (buffer>2){
+	buffer=0;}
+    
+      CurrentMode->MeasureType=buffer;
+    } else if ((CurrentMode->MeasureMode == RES)|(CurrentMode->MeasureMode == FRQ)){
+      CurrentMode->MeasureType=MEAN;
+    } else {
+      buffer=CurrentMode->MeasureType;
+       buffer++;
+
+      if (buffer>1){
+	buffer=0;}
+    
+      CurrentMode->MeasureType=buffer;
+    }
+    //GPIOD->ODR &= ~(0xFF00);
+    //GPIOD->ODR |= (0x8000);
     break;
   }
 

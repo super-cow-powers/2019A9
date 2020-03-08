@@ -6,10 +6,8 @@
 GPIO_InitTypeDef* Relay_GPIO_Struct; 
 
 volatile uint32_t ADC_result = 0, msTicks = 0;                        /* Variable to store millisecond ticks */
-volatile int pressed_button=0;
-volatile int new_ADC_val=0;  
-
-float32_t ADC_Vals[Max_ADC_Vals];
+volatile int pressed_button = 0, new_ADC_val = 0;
+volatile char UART_input = '0';
 
 int setup(void){
   SystemInit();//Initialise System
@@ -32,9 +30,13 @@ int main(void){
   
   char buff[50];
   int sTicks=0, Current_ADC_Val_Index=0;
-  float32_t RMS=0,MEAN=0,MAX=0;
+  float32_t stats_output=0;
+  ADC_Buffer ADC_Vals;
 
   Mode CurrentMode;
+  CurrentMode.MeasureMode=DC_V;
+  CurrentMode.MeasureType=MEAN;
+  CurrentMode.CurrentRange=one;
   
   modeSwitch(&CurrentMode,pressed_button); //
   
@@ -57,15 +59,26 @@ int main(void){
       pressed_button=modeSwitch(&CurrentMode,pressed_button); //Switches mode, setting the pressed button back to 0 (default).
     } //Also effectively acts as debouncing for the buttons.
     
-    if (Current_ADC_Val_Index == Max_ADC_Vals){
-      arm_rms_f32(ADC_Vals,Max_ADC_Vals,&RMS); //Find RMS
-      //Do something from here: https://arm-software.github.io/CMSIS_5/DSP/html/group__groupStats.html
+    if (ADC_Vals.current_value == Max_ADC_Vals){ //if the ADC buffer is full, do stats to it using "quick maffs".
+      switch (CurrentMode.MeasureType){
+      case MEAN:
+	arm_mean_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output); //Find mean
+	break;
+      case MAX:
+	arm_max_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output,NULL); //Find max
+	break;
+      case RMS:
+	arm_rms_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output); //Find RMS
+	break;
+      }
+      
+      //Do stats stuff to readings using CMSIS-DSP libs. See here for more details: https://arm-software.github.io/CMSIS_5/DSP/html/group__groupStats.html
       Current_ADC_Val_Index = 0;
     }
-    if (new_ADC_val == 1){
-      ADC_Vals[Current_ADC_Val_Index]=ADC_result-zero_point;
+    if (new_ADC_val == 1){ //copy new adc value into buffer if there is one, after adjusting for the zero offset.
+      ADC_Vals.ADC_Vals[ADC_Vals.current_value] = ADC_result-zero_point;
       new_ADC_val = 0;
-      Current_ADC_Val_Index++;
+      ADC_Vals.current_value++;
     }
   }
 }
@@ -84,7 +97,6 @@ void SysTick_Handler(void)  {                               /* SysTick interrupt
 void ADC_IRQHandler (void) {
   //SerialWrite_String("ADC\n\r");
   ADC_result = ADC1->DR;
-  new_ADC_val = 1;
   ADC1->CR2 |= ((0b1<<30));//Start new conversion
 }
 
@@ -126,3 +138,8 @@ void EXTI15_10_IRQHandler(void) {
   EXTI->PR = (0xFFFF);//Clear irq
 }
 
+void USART2_IRQHandler (void) {
+  if (USART2->SR & USART_SR_RXNE) {
+    UART_input = USART2->DR;
+  }
+}
