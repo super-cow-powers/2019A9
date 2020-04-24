@@ -125,6 +125,7 @@ void Initialise_IRQs(void){
   NVIC_SetPriority(ADC_IRQn, 0); //Set ADC priority.
 
   NVIC_EnableIRQ(USART2_IRQn);
+  NVIC_EnableIRQ(TIM4_IRQn);
   SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 1ms
 }
 
@@ -146,9 +147,83 @@ void Initialise_ADCs(void){
   ADC1->CR2 |= (0b1<<30);
 }
 
-void redraw_display(char* buffer, Mode CurrentMode){
+
+void init_FRQ(void){
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN; //Enable GPIOD if not already
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+  GPIOE->MODER &= ~(0b10); //Clear P.E 0 mode
+  GPIOE->MODER |= (0b10); //Set P.E 0 to AF mode
+  GPIOE->AFR[0] &= (0b0010); //Set P.E 0 to AF mode 2
+  GPIOE->AFR[0] |= (0b0010);
+  
+  TIM4->SMCR &= ~(0b111);
+  TIM4->SMCR |= (0b111);
+  TIM4->SMCR |= (0b1<<14);
+  TIM4->DIER = 0b1;
+  TIM4->CR1 |= 0b1<<2;
+  TIM4->CR1 |= 0b1;
+  
+}
+char* output_to_string(float value){ //Converts the floating-point output to a string to be shown
+  char* num_str = (char*)malloc(5*sizeof(char));
+  int int_of_val = (int)value;//required because newlib-nano does not default allow floats in *printf 
+  sprintf(num_str,"%d.%d%d",int_of_val,(int)((value-int_of_val)*10),(int)((value-int_of_val)*100));
+  return num_str;
+}
+
+void update_Serial_out(float value, Mode* CurrentMode){
+  char* number = output_to_string(value);
+  char* mode = (char*)malloc(10*sizeof(char));
+  if ((CurrentMode->MeasureMode != FRQ)&&(CurrentMode->MeasureMode != RES)){
+    switch (CurrentMode->CurrentRange){
+    case (tenm):
+      strcpy(mode,"10m");
+      break;
+    case (hundredm):
+      strcpy(mode,"100m");
+      break;
+    case (one):
+      strcpy(mode,"");
+      break;
+    case (ten):
+      strcpy(mode,"10");
+      break;
+    }
+  } else {
+    strcpy(mode,"");
+  }
+  
+  switch (CurrentMode->MeasureMode){
+  case (DC_V):
+    strcat(mode,"V");
+    break;
+  case (AC_V):
+    strcat(mode,"Vrms");
+    break;
+  case (DC_I):
+    strcat(mode,"A");
+    break;
+  case (AC_I):
+    strcat(mode,"Arms");
+    break;
+  case (FRQ):
+    strcat(mode,"Hz");
+    break;
+  case (RES):
+    strcat(mode,"Ohms");
+    break;
+  }
+  SerialWrite_String(number);
+  SerialWrite_String(mode);
+  free(number);//Clean up after yourself.
+  free(mode);
+}
+
+void redraw_display(float value, Mode CurrentMode){
+  char* buffer = output_to_string(value);
   PB_LCD_WriteString("                ");
-  PB_LCD_GoToXY(0,0);
+  PB_LCD_GoToXY((8-(strlen(buffer))),0);
+  //PB_LCD_GoToXY(0,0);
   PB_LCD_WriteString(buffer);
   PB_LCD_GoToXY(0,1);
   
@@ -175,23 +250,34 @@ void redraw_display(char* buffer, Mode CurrentMode){
   if ((CurrentMode.MeasureMode != FRQ)&&(CurrentMode.MeasureMode != RES)){
   switch (CurrentMode.CurrentRange){
   case (tenm):
-    PB_LCD_WriteString(" (10 milli)                     ");
+    PB_LCD_WriteString(" (10 milli)");
     break;
   case (hundredm):
-    PB_LCD_WriteString(" (100 milli)                    ");
+    PB_LCD_WriteString(" (100 milli)");
     break;
   case (one):
-    PB_LCD_WriteString(" (1)                            ");
+    PB_LCD_WriteString(" (1)");
     break;
   case (ten):
-    PB_LCD_WriteString(" (10)                           ");
+    PB_LCD_WriteString(" (10)");
     break;
   }
   } else {
     PB_LCD_WriteString("              ");
   }
-    
+  switch (CurrentMode.MeasureType){
+  case (MEAN):
+    PB_LCD_WriteString(" MEAN                     ");
+    break;
+  case (MAX):
+    PB_LCD_WriteString(" MAX                     ");
+    break;
+  case (RMS):
+    PB_LCD_WriteString(" RMS                     ");
+    break;
+  }
   PB_LCD_GoToXY(0,0);
+  free(buffer);
 }
 
 unsigned int init_vm(void){

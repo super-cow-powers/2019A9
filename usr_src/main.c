@@ -1,13 +1,16 @@
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 
 //Global variable defs go here please
 GPIO_InitTypeDef* Relay_GPIO_Struct; 
-
-volatile uint32_t ADC_result = 0, msTicks = 0;                        /* Variable to store millisecond ticks */
-volatile int pressed_button = 0, new_ADC_val = 0;
+const int ADC_BUFF_SIZE = 1024;
+volatile uint32_t ADC_result = 0, msTicks = 0; /*msTicks increments each millisecond */
+volatile int pressed_button = 1, new_ADC_val = 0;
 volatile char UART_input = '0';
+volatile int counter_overflow=0;
 
 int setup(void){
   SystemInit();//Initialise System
@@ -18,7 +21,7 @@ int setup(void){
   Initialise_ADCs();
   PB_LCD_Init(); //Init Screen
   Initialise_IRQs(); //setup IRQs
-  
+  init_FRQ();
   Init_Buttons();
   
   return 0;
@@ -30,9 +33,10 @@ int main(void){
   
   char buff[50];
   int sTicks=0, Current_ADC_Val_Index=0;
-  float32_t stats_output=0;
-  ADC_Buffer ADC_Vals;
-
+  float32_t* stats_output=(float32_t* )malloc(sizeof(float32_t));
+  float32_t ADC_Vals_Vect[ADC_BUFF_SIZE];
+  float32_t ADC_Vals_Vect_TST[10]={4,76.54,-34,6.4,3,7,2,9,65,1}; //Test data for stats stuff
+  
   Mode CurrentMode;
   CurrentMode.MeasureMode=DC_V;
   CurrentMode.MeasureType=MEAN;
@@ -43,43 +47,44 @@ int main(void){
   unsigned int zero_point=init_vm();
 
   redraw_display(buff, CurrentMode);
-
+  
   while (1){ //Main control loop
     
     if (!(msTicks % 200)){
       
       sTicks++;
-      sprintf(buff,"ADC:%d, %d, %d",(int)(ADC_result-zero_point),CurrentMode.MeasureMode,CurrentMode.CurrentRange);
-      SerialWrite_String(buff);
-      SerialWrite_String("\n\r");
+      update_Serial_out(stats_output,&CurrentMode);
+      //sprintf(buff,"%d %d",(int)*stats_output,counter_overflow);
+      //SerialWrite_String(buff);
+      //SerialWrite_String("\n\r");
         
-      redraw_display(buff, CurrentMode);      
+      redraw_display(stats_output, CurrentMode);      
     } 
     if (!(msTicks % 10)){
       pressed_button=modeSwitch(&CurrentMode,pressed_button); //Switches mode, setting the pressed button back to 0 (default).
     } //Also effectively acts as debouncing for the buttons.
     
-    if (ADC_Vals.current_value == Max_ADC_Vals){ //if the ADC buffer is full, do stats to it using "quick maffs".
+    if (Current_ADC_Val_Index == ADC_BUFF_SIZE){ //if the ADC buffer is full, do stats to it using "quick maffs".
+      Current_ADC_Val_Index = 0;
       switch (CurrentMode.MeasureType){
       case MEAN:
-	arm_mean_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output); //Find mean
+	arm_mean_f32(ADC_Vals_Vect,ADC_BUFF_SIZE,stats_output); //Find mean
 	break;
       case MAX:
-	arm_max_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output,NULL); //Find max
+	arm_max_f32(ADC_Vals_Vect,ADC_BUFF_SIZE,stats_output,NULL); //Find max
 	break;
       case RMS:
-	arm_rms_f32(ADC_Vals.ADC_Vals,Max_ADC_Vals,&stats_output); //Find RMS
+	arm_rms_f32(ADC_Vals_Vect,ADC_BUFF_SIZE,stats_output); //Find RMS
 	break;
       }
-      
+    }
       //Do stats stuff to readings using CMSIS-DSP libs. See here for more details: https://arm-software.github.io/CMSIS_5/DSP/html/group__groupStats.html
-      Current_ADC_Val_Index = 0;
-    }
-    if (new_ADC_val == 1){ //copy new adc value into buffer if there is one, after adjusting for the zero offset.
-      ADC_Vals.ADC_Vals[ADC_Vals.current_value] = ADC_result-zero_point;
-      new_ADC_val = 0;
-      ADC_Vals.current_value++;
-    }
+      
+      if (new_ADC_val == 1){ //copy new adc value into buffer if there is one, after adjusting for the zero offset.
+	ADC_Vals_Vect[Current_ADC_Val_Index] =(float32_t)((int)(ADC_result)-(int)(zero_point));
+	new_ADC_val = 0;
+	Current_ADC_Val_Index++;
+      }
   }
 }
 
@@ -97,6 +102,7 @@ void SysTick_Handler(void)  {                               /* SysTick interrupt
 void ADC_IRQHandler (void) {
   //SerialWrite_String("ADC\n\r");
   ADC_result = ADC1->DR;
+  new_ADC_val = 1;
   ADC1->CR2 |= ((0b1<<30));//Start new conversion
 }
 
@@ -142,4 +148,13 @@ void USART2_IRQHandler (void) {
   if (USART2->SR & USART_SR_RXNE) {
     UART_input = USART2->DR;
   }
+}
+
+void TIM4_IRQHandler (void) {
+  //Do something
+  TIM4->SR &= ~(1); //Clear interrupt flags
+  TIM4->SR &= ~(0b1<<6);
+  //Do something
+  counter_overflow += 1;
+  
 }
