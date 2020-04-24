@@ -1,0 +1,55 @@
+#High Level pseudo code for the system.
+#Some functions/subroutines will be defined,
+#lower-level ones will not so as to keep this
+#fairly brief.
+
+BEGIN FUNCTION Setup:
+	 ARM_SystemInit();
+	 External_Oscilator();
+	 UART();
+	 Relays();
+	 ADCs();
+	 Buttons();
+	 IRQ_NVIC();
+END FUNCTION
+
+PROGRAM Multimeter
+	Setup();
+	Clear_LCD();
+	Set_Defaults();
+	Find_ADC_Zero_Point();
+
+	Update_LCD();
+
+	WHILE TRUE:
+	      Every 200 mS DO:
+	      	    Update_USART_Output();
+	      	    Update_LCD();
+	      END DO
+		    
+	      Every 10mS DO:
+	      	    Read button_IRQ_buffer;
+		    UPDATE_BUTTONS();
+		    UPDATE_MODE();
+	      END DO
+		    
+	       IF (ADC_BUFFER is full):
+	       	  ON current_mode_type SWITCH:
+	       	     case MEAN:
+		    	  measurement=ARM_DSP_MEAN(ADC_BUFFER);
+		     case MAX:
+		    	  measurement=ARM_DSP_MAX(ADC_BUFFER);
+		     case RMS:
+		    	  measurement=ARM_DSP_RMS(ADC_BUFFER);
+		  EMPTY(ADC_BUFFER);
+	        END IF
+
+		IF (new ADC reading):
+		   	ADJUST_FOR_ZERO_POINT(adc_val);
+			COPY(adc_val TO ENDOF ADC_BUFFER);
+			CLEAR reading_flag;
+		END IF
+
+		
+
+		
