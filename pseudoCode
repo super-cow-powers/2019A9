@@ -30,10 +30,10 @@ BEGIN FUNCTION Update_LCD:
 END Function
 
 BEGIN FUNCTION GetOutput:
-      	 RETURN STRING(get<Current_Mode>());
+      	 RETURN STRING(get_<Current_Mode>());
 END FUNCTION
 
-BEGIN FUNCTION Get<*V,*I>:
+BEGIN FUNCTION Get_<*V,*I>:
       	 WHILE (measurement TOO SMALL):
 	       TRY NEXT <>_Range;
 	       IF TRIED-ALL: RETURN 0;
@@ -41,7 +41,7 @@ BEGIN FUNCTION Get<*V,*I>:
       	 RETURN measurement*Range_scale_factor;
 END FUNCTION
 
-BEGIN FUNCTION Get<R>:
+BEGIN FUNCTION Get_R:
       	 LOCAL intermediate_V=measurement*Voltage_Range_scale_factor;
 	 WHILE (measurement TOO SMALL):
 	       TRY NEXT Voltage_Range;
@@ -51,7 +51,7 @@ BEGIN FUNCTION Get<R>:
 	 RETURN intermediate_V/CCS_Current;
 END FUNCTION
 
-BEGIN FUNCTION Get<FRQ>:
+BEGIN FUNCTION Get_FRQ:
          EXT_Prescaler = 1;
       	 COUNT MCU_Clock_Cycles BETWEEN EXT_Rising_Edge;
 	 WHILE (COUNT TOO SMALL):
