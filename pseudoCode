@@ -3,6 +3,10 @@
 #lower-level ones will not so as to keep this
 #fairly brief.
 
+#This may be changed with no notice, or may not be entirely accurate -
+#however it should still represent the spirit of the real code.
+#David.
+
 BEGIN FUNCTION Setup:
 	 ARM_SystemInit();
 	 External_Oscilator();
@@ -11,6 +15,52 @@ BEGIN FUNCTION Setup:
 	 ADCs();
 	 Buttons();
 	 IRQ_NVIC();
+END FUNCTION
+
+BEGIN FUNCTION Update_USART_Output:
+      	 SerialWrite(GetOutput+GetMode+"\n");
+END Function
+
+BEGIN FUNCTION Update_LCD:
+      	 Clear_LCD();
+      	 Centre(LCD_Write(GetOutput));
+	 LCD_GOTO(NewLine);
+	 LCD_Write(GetMeasureType);
+END Function
+
+BEGIN FUNCTION GetOutput:
+      	 RETURN STRING(get<Current_Mode>());
+END FUNCTION
+
+BEGIN FUNCTION Get<*V,*I>:
+      	 WHILE (measurement TOO SMALL):
+	       TRY NEXT <>_Range;
+	       IF TRIED-ALL: RETURN 0;
+	 END WHILE
+      	 RETURN measurement*Range_scale_factor;
+END FUNCTION
+
+BEGIN FUNCTION Get<R>:
+      	 LOCAL intermediate_V=measurement*Voltage_Range_scale_factor;
+	 WHILE (measurement TOO SMALL):
+	       TRY NEXT Voltage_Range;
+	       intermediate_V=measurement*Voltage_Range_scale_factor;
+	       IF TRIED-ALL: RETURN 0;
+	 END WHILE
+	 RETURN intermediate_V/CCS_Current;
+END FUNCTION
+
+BEGIN FUNCTION Get<FRQ>:
+         EXT_Prescaler = 1;
+      	 COUNT MCU_Clock_Cycles BETWEEN EXT_Rising_Edge;
+	 WHILE (COUNT TOO SMALL):
+	       TRY INCREASE EXT_Prescaler;
+	       COUNT MCU_Clock_Cycles BETWEEN EXT_Rising_Edge;
+	       IF TRIED-ALL: RETURN BIG_NUM;
+	 END WHILE
+	 RETURN 1/(COUNT/MCU_FRQ);
+END FUNCTION
+
 END FUNCTION
 
 PROGRAM Multimeter
@@ -50,6 +100,6 @@ PROGRAM Multimeter
 			CLEAR reading_flag;
 		END IF
 
-		
+END PROGRAM
 
-		
+HANDLE IRQs
