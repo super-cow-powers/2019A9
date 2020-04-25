@@ -5,6 +5,7 @@
 
 #This may be changed with no notice, or may not be entirely accurate -
 #however it should still represent the spirit of the real code.
+#(Even if the real code is incomplete.)
 #David.
 
 BEGIN FUNCTION Setup:
