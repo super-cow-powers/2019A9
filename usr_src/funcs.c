@@ -125,7 +125,7 @@ void Initialise_IRQs(void){
   NVIC_SetPriority(ADC_IRQn, 0); //Set ADC priority.
 
   NVIC_EnableIRQ(USART2_IRQn);
-  NVIC_EnableIRQ(TIM4_IRQn);
+  NVIC_EnableIRQ(TIM4_IRQn); //Enable Timer 4
   SysTick_Config(SystemCoreClock / 1000); //Set SysTick to 1ms
 }
 
@@ -149,6 +149,7 @@ void Initialise_ADCs(void){
 
 
 void init_FRQ(void){
+  //Configure 16 bit Timer 4 to count from Pin P.E 0
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN; //Enable GPIOD if not already
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
   GPIOE->MODER &= ~(0b10); //Clear P.E 0 mode
@@ -157,11 +158,12 @@ void init_FRQ(void){
   GPIOE->AFR[0] |= (0b0010);
   
   TIM4->SMCR &= ~(0b111);
-  TIM4->SMCR |= (0b111);
-  TIM4->SMCR |= (0b1<<14);
+  TIM4->SMCR |= (0b111); //Set External Clock Mode 1
+  TIM4->SMCR |= (0b1<<14); //Enable external clock
+  TIM4->SMCR &= ~(0b11<<13); //Disable Prescaler for now. Change in measurement fn if too fast
   TIM4->DIER = 0b1;
-  TIM4->CR1 |= 0b1<<2;
-  TIM4->CR1 |= 0b1;
+  TIM4->CR1 |= 0b1<<2; //Only an overflow/underflow can trigger IRQ
+  TIM4->CR1 |= 0b1; //Enable the counter
   
 }
 char* output_to_string(float value){ //Converts the floating-point output to a string to be shown

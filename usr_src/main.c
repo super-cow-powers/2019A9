@@ -31,10 +31,9 @@ int main(void){
   setup();
   PB_LCD_Clear();
   
-  char buff[50];
-  int sTicks=0, Current_ADC_Val_Index=0;
-  float32_t* stats_output=(float32_t* )malloc(sizeof(float32_t));
-  float32_t ADC_Vals_Vect[ADC_BUFF_SIZE];
+  int Current_ADC_Val_Index=0;
+  float32_t* stats_output=(float32_t* )malloc(sizeof(float32_t));//ARM DSP libs has some funky types
+  float32_t ADC_Vals_Vect[ADC_BUFF_SIZE]; //These are 32 bit fixed precision floats for example.
   float32_t ADC_Vals_Vect_TST[10]={4,76.54,-34,6.4,3,7,2,9,65,1}; //Test data for stats stuff
   
   Mode CurrentMode;
@@ -42,23 +41,20 @@ int main(void){
   CurrentMode.MeasureType=MEAN;
   CurrentMode.CurrentRange=one;
   
-  modeSwitch(&CurrentMode,pressed_button); //
+  modeSwitch(&CurrentMode,pressed_button);
   
   unsigned int zero_point=init_vm();
 
-  redraw_display(buff, CurrentMode);
+  redraw_display(0, CurrentMode);
   
   while (1){ //Main control loop
     
     if (!(msTicks % 200)){
-      
-      sTicks++;
-      update_Serial_out(stats_output,&CurrentMode);
+      update_Serial_out(*stats_output,&CurrentMode);
       //sprintf(buff,"%d %d",(int)*stats_output,counter_overflow);
       //SerialWrite_String(buff);
-      //SerialWrite_String("\n\r");
-        
-      redraw_display(stats_output, CurrentMode);      
+      //SerialWrite_String("\n\r");  
+      redraw_display(*stats_output, CurrentMode);      
     } 
     if (!(msTicks % 10)){
       pressed_button=modeSwitch(&CurrentMode,pressed_button); //Switches mode, setting the pressed button back to 0 (default).
@@ -77,9 +73,7 @@ int main(void){
 	arm_rms_f32(ADC_Vals_Vect,ADC_BUFF_SIZE,stats_output); //Find RMS
 	break;
       }
-    }
-      //Do stats stuff to readings using CMSIS-DSP libs. See here for more details: https://arm-software.github.io/CMSIS_5/DSP/html/group__groupStats.html
-      
+    }//Do stats stuff to readings using CMSIS-DSP libs. See here for more details: https://arm-software.github.io/CMSIS_5/DSP/html/group__groupStats.html
       if (new_ADC_val == 1){ //copy new adc value into buffer if there is one, after adjusting for the zero offset.
 	ADC_Vals_Vect[Current_ADC_Val_Index] =(float32_t)((int)(ADC_result)-(int)(zero_point));
 	new_ADC_val = 0;
@@ -88,11 +82,7 @@ int main(void){
   }
 }
 
-
-
-
-
-//IRQ Stuff. BEGIN:
+//Begin IRQ Stuff:
 
 
 void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
@@ -151,10 +141,8 @@ void USART2_IRQHandler (void) {
 }
 
 void TIM4_IRQHandler (void) {
-  //Do something
   TIM4->SR &= ~(1); //Clear interrupt flags
-  TIM4->SR &= ~(0b1<<6);
-  //Do something
+  TIM4->SR &= ~(0b1<<6); //Restart
   counter_overflow += 1;
   
 }
