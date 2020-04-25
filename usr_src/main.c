@@ -1,3 +1,10 @@
+/*
+  System software for the STM32F407 Multimeter project.
+  Main.
+
+  David Miall, 2020.
+
+ */
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
 #include <stdlib.h>

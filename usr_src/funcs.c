@@ -1,3 +1,8 @@
+/*
+  Functions required for the STM32 Multimeter.
+  David Miall, 2020
+ */
+
 #include "funcs.h"
 #include "PB_LCD_Drivers.h"
 

@@ -6,6 +6,7 @@
    P.C 4     : ADC
    P.E 0    : Frequency. TIM4_CH1
 
+David Miall, 2020
  */
 
 #define ARM_MATH_CM4
